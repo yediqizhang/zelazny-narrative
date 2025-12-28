@@ -57,7 +57,7 @@ const App: React.FC = () => {
     // 使用《攻壳机动队》经典的《傀儡谣》(Making of Cyborg)
     const audio = new Audio('https://ia800904.us.archive.org/21/items/ghost-in-the-shell-ost-1995/01%20-%20M01%20Chant%20I%20-%20Making%20of%20Cyborg.mp3');
     audio.loop = true;
-    audio.volume = 0.6; // 设置音量为 0.6
+    audio.volume = 0.6; // 调高音量至 0.6
     audioRef.current = audio;
 
     return () => {
@@ -70,13 +70,8 @@ const App: React.FC = () => {
 
   // 启动旅程并播放音乐
   const startJourney = () => {
-    if (audioRef.current) {
-      // 只有在未播放时才触发，防止重复点击导致的音频重置或报错
-      if (audioRef.current.paused) {
-        audioRef.current.play().catch(err => {
-          console.warn("Audio play was prevented by browser policy. Interaction required.", err);
-        });
-      }
+    if (audioRef.current && audioRef.current.paused) {
+      audioRef.current.play().catch(err => console.log("Audio play blocked by browser:", err));
     }
     setPage(2);
   };
