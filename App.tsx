@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import Snowfall from './components/Snowfall';
 
 const App: React.FC = () => {
@@ -8,6 +9,14 @@ const App: React.FC = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [visibleArtifactCount, setVisibleArtifactCount] = useState(2);
   
+  // 图像生成相关状态
+  const [fostImage, setFostImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // 第 8 页文字显现状态
+  const [showLine1, setShowLine1] = useState(false);
+  const [showLine2, setShowLine2] = useState(false);
+
   // 追踪第 5 页隐藏的短语索引
   const [hiddenPhrases, setHiddenPhrases] = useState<Set<number>>(new Set());
   
@@ -31,7 +40,7 @@ const App: React.FC = () => {
     "半个马桶垫圈"
   ];
 
-  // 第 5 页散落的文案定义 - 进行了字数对齐微调
+  // 第 5 页散落的文案定义
   const scatterPhrases = [
     { text: <>人创造了逻辑，<br />因此高于逻辑</>, pos: "absolute top-[18%] left-[12%] max-w-[280px] text-left" },
     { text: <>人可以制造工具，但无法<br />真正感知这些数值</>, pos: "absolute top-[22%] right-[10%] max-w-[320px] text-right" },
@@ -51,6 +60,70 @@ const App: React.FC = () => {
       return () => clearTimeout(transitionTimer);
     }
   }, [page]);
+
+  // 第 8 页进入后触发图像生成
+  useEffect(() => {
+    if (page === 8 && !fostImage && !isGenerating) {
+      const generateAndroidImage = async () => {
+        setIsGenerating(true);
+        try {
+          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+              parts: [
+                {
+                  text: "A cinematic movie still imitating the visual style of Westworld Season 1, a gentle human figure awakening and emerging from a dark organic matrix, partially submerged in dark blue swirling water at the bottom. High contrast lighting, professional cinematography, anamorphic lens flares, cold blue tones and warm skin tones, photorealistic, 16:9 aspect ratio.",
+                },
+              ],
+            },
+            config: {
+              imageConfig: {
+                aspectRatio: "16:9"
+              }
+            }
+          });
+
+          for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+              const base64Data = part.inlineData.data;
+              setFostImage(`data:image/png;base64,${base64Data}`);
+              break;
+            }
+          }
+        } catch (error) {
+          console.error("Failed to generate cinematic image:", error);
+        } finally {
+          setIsGenerating(false);
+        }
+      };
+      generateAndroidImage();
+    }
+  }, [page, fostImage, isGenerating]);
+
+  // 第 8 页文字显现逻辑
+  useEffect(() => {
+    if (page === 8 && fostImage) {
+      // 图像出现后 2 秒显示第一行
+      const t1 = setTimeout(() => {
+        setShowLine1(true);
+      }, 2000);
+      
+      // 第一行显现后停顿 3 秒（即总计 5 秒）显示第二行
+      const t2 = setTimeout(() => {
+        setShowLine2(true);
+      }, 5000);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    } else if (page !== 8) {
+      // 离开页面重置状态
+      setShowLine1(false);
+      setShowLine2(false);
+    }
+  }, [page, fostImage]);
 
   const handlePhraseClick = (index: number) => {
     setHiddenPhrases(prev => {
@@ -560,9 +633,9 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Page 7 Content - Sequential Text Flow & Significantly Lifted Wave Effect */}
+      {/* Page 7 Content - Sequential Text Flow & Wave Effect */}
       {page === 7 && (
-        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 animate-in fade-in duration-[2000ms] fill-mode-both overflow-hidden">
+        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 animate-in fade-in duration-[2000ms] fill-mode-both">
           <style>{`
             .staggered-text {
               opacity: 0;
@@ -574,18 +647,23 @@ const App: React.FC = () => {
             }
 
             .waves-container {
-              position: relative;
-              width: 100vw;
-              min-height: 120px;
-              overflow: visible;
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              height: 120px;
+              overflow: hidden;
               pointer-events: none;
               z-index: 5;
             }
 
             .wave-svg {
-              display: block;
+              position: relative;
               width: 100%;
-              height: 100px;
+              height: 100%;
+              margin-bottom: -7px; /* Fix for potential white space at bottom */
+              min-height: 100px;
+              max-height: 150px;
               mix-blend-mode: screen;
             }
 
@@ -611,43 +689,54 @@ const App: React.FC = () => {
             }
           `}</style>
           
-          <div className="w-full flex flex-col items-center pt-20">
-            {/* Central content container */}
-            <div className="max-w-4xl text-center font-light text-white/90 space-y-6 relative z-20" style={{ fontWeight: 300, letterSpacing: '2px', lineHeight: '1.8' }}>
-              {/* Paragraph 1: Immediate */}
-              <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '0s' }}>
-                弗洛斯特想要成为人
-              </p>
-              
-              {/* Paragraph 2: Delay 3s */}
-              <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '3s' }}>
-                他仿制了人的感觉器官，使他能像人一样看到、嗅到、尝到、听到
-              </p>
-              
-              {/* Paragraph 3: Delay 6s */}
-              <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '6s' }}>
-                他开始创造艺术，他想拥有人类的体验
-              </p>
-            </div>
+          {/* Central content container */}
+          <div className="max-w-4xl text-center font-light text-white/90 space-y-6 relative z-20" style={{ fontWeight: 300, letterSpacing: '2px', lineHeight: '1.8' }}>
+            {/* Paragraph 1: Immediate */}
+            <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '0s' }}>
+              弗洛斯特想要成为人
+            </p>
             
-            {/* Immersive Wave Effect lifted significantly - mt-[160px] is roughly double the previous 80px gap */}
-            <div className="waves-container mt-[160px]">
-              <svg className="wave-svg" viewBox="0 24 150 28" preserveAspectRatio="none" shapeRendering="auto">
-                <defs>
-                  <path id="gentle-wave-path" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
-                </defs>
-                <g className="parallax-waves">
-                  {/* Wave 1: Background Layer */}
-                  <use href="#gentle-wave-path" x="48" y="0" fill="rgba(30, 58, 138, 0.3)" />
-                  {/* Wave 2: Middle Layer */}
-                  <use href="#gentle-wave-path" x="48" y="3" fill="rgba(30, 58, 138, 0.5)" />
-                  {/* Wave 3: Top Layer */}
-                  <use href="#gentle-wave-path" x="48" y="5" fill="rgba(30, 58, 138, 0.8)" />
-                </g>
-              </svg>
-              {/* Deep water block extending to infinity to avoid gaps after lifting the waves */}
-              <div style={{ backgroundColor: 'rgba(30, 58, 138, 0.8)', height: '100vh', marginTop: '-2px' }}></div>
+            {/* Paragraph 2: Delay 3s */}
+            <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '3s' }}>
+              他仿制了人的感觉器官，使他能像人一样看到、嗅到、尝到、听到
+            </p>
+            
+            {/* Paragraph 3: Delay 6s */}
+            <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '6s' }}>
+              他开始创造艺术，他想拥有人类的体验
+            </p>
+
+            {/* BUTTON: Delay 9s */}
+            <div className="pt-8 staggered-text" style={{ animationDelay: '9s' }}>
+              <button 
+                onClick={() => {
+                  setPage(8);
+                }}
+                className="group relative px-8 py-3 border border-white/30 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-slate-900 transition-all duration-500 overflow-hidden cursor-pointer rounded-full"
+              >
+                <span className="relative z-10 text-xs md:text-sm tracking-[0.2em] font-medium">
+                  成为人
+                </span>
+                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+              </button>
             </div>
+          </div>
+          
+          {/* Immersive Wave Effect at Bottom */}
+          <div className="waves-container">
+            <svg className="wave-svg" viewBox="0 24 150 28" preserveAspectRatio="none" shapeRendering="auto">
+              <defs>
+                <path id="gentle-wave-path" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+              </defs>
+              <g className="parallax-waves">
+                {/* Wave 1: Background Layer */}
+                <use href="#gentle-wave-path" x="48" y="0" fill="rgba(30, 58, 138, 0.3)" />
+                {/* Wave 2: Middle Layer */}
+                <use href="#gentle-wave-path" x="48" y="3" fill="rgba(30, 58, 138, 0.5)" />
+                {/* Wave 3: Top Layer */}
+                <use href="#gentle-wave-path" x="48" y="5" fill="rgba(30, 58, 138, 0.8)" />
+              </g>
+            </svg>
           </div>
 
           {/* Invisible interactive reset */}
@@ -664,8 +753,124 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Shared Corner Details - Only show if not on the final Pages (5, 6, 7) */}
-      {page !== 5 && page !== 6 && page !== 7 && (
+      {/* Page 8 Content - Gentle Human Awakening & Visual Climax */}
+      {page === 8 && (
+        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 animate-in fade-in duration-[3000ms] fill-mode-both">
+          <style>{`
+            .waves-container {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              height: 120px;
+              overflow: hidden;
+              pointer-events: none;
+              z-index: 5;
+            }
+
+            .wave-svg {
+              position: relative;
+              width: 100%;
+              height: 100%;
+              margin-bottom: -7px;
+              min-height: 100px;
+              max-height: 150px;
+              mix-blend-mode: screen;
+            }
+
+            .parallax-waves > use {
+              animation: move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
+            }
+            .parallax-waves > use:nth-child(1) { animation-delay: -2s; animation-duration: 7s; }
+            .parallax-waves > use:nth-child(2) { animation-delay: -3s; animation-duration: 10s; }
+            .parallax-waves > use:nth-child(3) { animation-delay: -4s; animation-duration: 13s; }
+
+            @keyframes move-forever {
+              0% { transform: translate3d(-90px, 0, 0); }
+              100% { transform: translate3d(85px, 0, 0); }
+            }
+
+            .frost-emergence {
+              position: absolute;
+              bottom: 0;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 100%;
+              max-width: 1200px;
+              opacity: 0;
+              transition: opacity 5s ease-in-out;
+              z-index: 2;
+              pointer-events: none;
+            }
+
+            .frost-emergence.visible {
+              opacity: 0.6;
+            }
+          `}</style>
+          
+          {/* AI Generated Human Figure Awakening */}
+          {fostImage && (
+            <img 
+              src={fostImage} 
+              alt="The gentle image of Frost awakening" 
+              className={`frost-emergence ${fostImage ? 'visible' : ''}`}
+              style={{ maskImage: 'linear-gradient(to top, black 25%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 25%, transparent 100%)' }}
+            />
+          )}
+
+          {/* Sequential Narrative Climax Text */}
+          <div className="relative z-30 flex flex-col items-center justify-center text-center space-y-12">
+            {/* 第一行文字：对应第二页字体大小 */}
+            <p 
+              className={`text-base md:text-xl font-light text-white/90 tracking-[2px] leading-loose transition-opacity duration-1000 ${showLine1 ? 'opacity-100' : 'opacity-0'}`}
+              style={{ fontWeight: 300 }}
+            >
+              他张开他的嘴，挣扎着，终于形成字句：
+            </p>
+            
+            {/* 第二行文字：缩小一半后的震撼冲击 (从 4xl/7xl 降至 2xl/4xl) */}
+            <p 
+              className={`text-2xl md:text-4xl font-bold text-white tracking-[0.2em] transition-opacity duration-1000 drop-shadow-[0_0_20px_rgba(255,255,255,0.6)] ${showLine2 ? 'opacity-100' : 'opacity-0'}`}
+            >
+              “——我——害怕！”
+            </p>
+          </div>
+
+          {/* Immersive Wave Effect at Bottom - Only show if image is NOT yet generated */}
+          {!fostImage && (
+            <div className="waves-container">
+              <svg className="wave-svg" viewBox="0 24 150 28" preserveAspectRatio="none" shapeRendering="auto">
+                <defs>
+                  <path id="gentle-wave-path" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+                </defs>
+                <g className="parallax-waves">
+                  <use href="#gentle-wave-path" x="48" y="0" fill="rgba(30, 58, 138, 0.3)" />
+                  <use href="#gentle-wave-path" x="48" y="3" fill="rgba(30, 58, 138, 0.5)" />
+                  <use href="#gentle-wave-path" x="48" y="5" fill="rgba(30, 58, 138, 0.8)" />
+                </g>
+              </svg>
+            </div>
+          )}
+
+          {/* Invisible interactive reset for Page 8 */}
+          <div 
+            className="absolute inset-0 z-0 cursor-default" 
+            onDoubleClick={() => {
+              setPage(1);
+              setHiddenPhrases(new Set());
+              setIsCompleted(false);
+              setProgress(0);
+              setVisibleArtifactCount(2);
+              setFostImage(null);
+              setShowLine1(false);
+              setShowLine2(false);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Shared Corner Details - Only show if not on the final Pages (5, 6, 7, 8) */}
+      {page !== 5 && page !== 6 && page !== 7 && page !== 8 && (
         <>
           <div className="absolute bottom-[15%] right-[10%] w-1 h-1 bg-white rounded-full blur-[1px] opacity-40 animate-pulse"></div>
           <div className="absolute bottom-[20%] right-[15%] w-[1px] h-[1px] bg-white rounded-full opacity-20"></div>
