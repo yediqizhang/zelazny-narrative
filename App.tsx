@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [hiddenPhrases, setHiddenPhrases] = useState<Set<number>>(new Set());
   
   const timerRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // 可调参数：进度条转动总时长（毫秒）
   const PROGRESS_DURATION = 5000; 
@@ -50,6 +51,35 @@ const App: React.FC = () => {
     { text: <>人还懂得恨和爱、骄傲和绝望，<br />这些事物是无法度量的</>, pos: "absolute bottom-[38%] right-[8%] text-right w-full max-w-md" },
     { text: <>人的感受是无法以公式计算<br />的，情绪也没有换算因数</>, pos: "absolute top-[5%] right-[25%] max-w-[240px] text-center" }
   ];
+
+  // 初始化背景音乐逻辑
+  useEffect(() => {
+    // 使用《攻壳机动队》经典的《傀儡谣》(Making of Cyborg)
+    const audio = new Audio('https://ia800904.us.archive.org/21/items/ghost-in-the-shell-ost-1995/01%20-%20M01%20Chant%20I%20-%20Making%20of%20Cyborg.mp3');
+    audio.loop = true;
+    audio.volume = 0.6; // 设置音量为 0.6
+    audioRef.current = audio;
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // 启动旅程并播放音乐
+  const startJourney = () => {
+    if (audioRef.current) {
+      // 只有在未播放时才触发，防止重复点击导致的音频重置或报错
+      if (audioRef.current.paused) {
+        audioRef.current.play().catch(err => {
+          console.warn("Audio play was prevented by browser policy. Interaction required.", err);
+        });
+      }
+    }
+    setPage(2);
+  };
 
   // 第 6 页到第 7 页的自动过渡
   useEffect(() => {
@@ -269,7 +299,7 @@ const App: React.FC = () => {
             </p>
             <div className="pt-8">
               <button 
-                onClick={() => setPage(2)}
+                onClick={startJourney}
                 className="group relative px-8 py-3 border border-white/30 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-slate-900 transition-all duration-500 overflow-hidden cursor-pointer rounded-full"
               >
                 <span className="relative z-10 text-xs md:text-sm tracking-[0.2em] font-medium">
