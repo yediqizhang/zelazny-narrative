@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Snowfall from './components/Snowfall';
 
 const App: React.FC = () => {
@@ -31,16 +31,26 @@ const App: React.FC = () => {
     "半个马桶垫圈"
   ];
 
-  // 第 5 页散落的文案定义 - 确保包含所有请求的 7 个句子
+  // 第 5 页散落的文案定义 - 进行了字数对齐微调
   const scatterPhrases = [
     { text: <>人创造了逻辑，<br />因此高于逻辑</>, pos: "absolute top-[18%] left-[12%] max-w-[280px] text-left" },
-    { text: <>人可以制造工具，<br />但无法真正感知这些数值</>, pos: "absolute top-[22%] right-[10%] max-w-[320px] text-right" },
+    { text: <>人可以制造工具，但无法<br />真正感知这些数值</>, pos: "absolute top-[22%] right-[10%] max-w-[320px] text-right" },
     { text: <>人感知的不是<br />英寸、米、磅和加仑</>, pos: "absolute bottom-[28%] left-[15%] max-w-[280px] text-left" },
-    { text: <>人只感到热，感到冷，<br />感到轻重</>, pos: "absolute bottom-[20%] right-[12%] max-w-[280px] text-right" },
-    { text: "人不能感知度量", pos: "absolute top-[40%] left-[5%] text-left w-full md:w-auto" },
+    { text: <>人只感到热，<br />感到冷，感到轻重</>, pos: "absolute bottom-[20%] right-[12%] max-w-[280px] text-right" },
+    { text: <>人不能<br />感知度量</>, pos: "absolute top-[40%] left-[5%] text-left w-full md:w-auto" },
     { text: <>人还懂得恨和爱、骄傲和绝望，<br />这些事物是无法度量的</>, pos: "absolute bottom-[38%] right-[8%] text-right w-full max-w-md" },
-    { text: <>人的感受是无法以公式计算的，<br />情绪也没有换算因数</>, pos: "absolute top-[5%] right-[25%] max-w-[240px] text-center" }
+    { text: <>人的感受是无法以公式计算<br />的，情绪也没有换算因数</>, pos: "absolute top-[5%] right-[25%] max-w-[240px] text-center" }
   ];
+
+  // 第 6 页到第 7 页的自动过渡
+  useEffect(() => {
+    if (page === 6) {
+      const transitionTimer = setTimeout(() => {
+        setPage(7);
+      }, 5000);
+      return () => clearTimeout(transitionTimer);
+    }
+  }, [page]);
 
   const handlePhraseClick = (index: number) => {
     setHiddenPhrases(prev => {
@@ -416,64 +426,73 @@ const App: React.FC = () => {
       {page === 5 && (
         <div className="relative z-10 w-full h-full flex flex-col items-center justify-center animate-in fade-in duration-[3000ms] fill-mode-both px-8 overflow-hidden">
           
-          {/* Scattered Phrases - Clickable to hide with smooth fade transition */}
+          <style>{`
+            .interactive-quote {
+              display: inline-block;
+              padding: 15px;
+              cursor: pointer;
+              z-index: 30;
+              transition: opacity 1000ms ease-in-out;
+            }
+          `}</style>
+
+          {/* Scattered Phrases - Wrapped in .interactive-quote with padding heatzone */}
           {scatterPhrases.map((phrase, idx) => {
             const isHidden = hiddenPhrases.has(idx);
             return (
               <div 
                 key={idx}
                 onClick={() => handlePhraseClick(idx)}
-                className={`${phrase.pos} cursor-pointer transition-all duration-1000 ease-in-out ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'} group/phrase`}
+                className={`${phrase.pos} interactive-quote ${isHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'} group/phrase`}
               >
-                <p className="text-sm md:text-lg leading-loose font-light text-slate-200 tracking-wider opacity-70 group-hover/phrase:opacity-100 transition-opacity duration-500">
+                <p className="text-sm md:text-lg leading-loose font-light text-slate-200 tracking-wider opacity-70 group-hover/phrase:opacity-100 transition-opacity duration-500 pointer-events-none">
                   {phrase.text}
                 </p>
               </div>
             );
           })}
 
-          {/* Centerpiece Title */}
-          <div className="text-center z-20 space-y-12">
+          {/* Centerpiece Title & Buttons Section */}
+          <div className="relative z-20 flex flex-col items-center justify-center">
+            {/* “人是什么？” 始终保持在容器中心，不随按钮显现而移动 */}
             <h1 className="text-sm md:text-lg font-light tracking-[0.8em] text-white select-none">
               人是什么？
             </h1>
 
-            {/* 当所有句子（7个）消失后，在下方水平并排显示两个按钮，样式完全对照第二页 */}
-            {hiddenPhrases.size === scatterPhrases.length && (
-              <div className="flex flex-row items-center justify-center gap-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 fill-mode-both">
-                <button 
-                  onClick={() => {
-                    setPage(1);
-                    setHiddenPhrases(new Set());
-                    setIsCompleted(false);
-                    setProgress(0);
-                    setVisibleArtifactCount(2);
-                  }}
-                  className="group relative px-12 py-3 border border-white/30 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-slate-900 transition-all duration-500 overflow-hidden cursor-pointer rounded-full"
-                >
-                  <span className="relative z-10 text-xs md:text-sm tracking-[0.3em] font-medium text-white group-hover:text-slate-900 transition-colors duration-500">
-                    放弃探索
-                  </span>
-                  <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                </button>
+            {/* 按钮容器：绝对定位于标题下方 3rem 处 */}
+            <div 
+              className={`absolute top-full mt-12 transition-all duration-1000 flex flex-row items-center justify-center gap-8 ${
+                hiddenPhrases.size === scatterPhrases.length ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              <button 
+                onClick={() => {
+                  setPage(1);
+                  setHiddenPhrases(new Set());
+                  setIsCompleted(false);
+                  setProgress(0);
+                  setVisibleArtifactCount(2);
+                }}
+                className="group relative px-12 py-3 border border-white/30 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-slate-900 transition-all duration-500 overflow-hidden cursor-pointer rounded-full whitespace-nowrap"
+              >
+                <span className="relative z-10 text-xs md:text-sm tracking-[0.3em] font-medium text-white group-hover:text-slate-900 transition-colors duration-500">
+                  放弃探索
+                </span>
+                <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+              </button>
 
-                <button 
-                  onClick={() => {
-                    setPage(1);
-                    setHiddenPhrases(new Set());
-                    setIsCompleted(false);
-                    setProgress(0);
-                    setVisibleArtifactCount(2);
-                  }}
-                  className="group relative px-12 py-3 border border-white/30 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-slate-900 transition-all duration-500 overflow-hidden cursor-pointer rounded-full"
-                >
-                  <span className="relative z-10 text-xs md:text-sm tracking-[0.3em] font-medium text-white group-hover:text-slate-900 transition-colors duration-500">
-                    继续探索
-                  </span>
-                  <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                </button>
-              </div>
-            )}
+              <button 
+                onClick={() => {
+                  setPage(6);
+                }}
+                className="group relative px-12 py-3 border border-white/30 bg-white/5 backdrop-blur-sm hover:bg-white hover:text-slate-900 transition-all duration-500 overflow-hidden cursor-pointer rounded-full whitespace-nowrap"
+              >
+                <span className="relative z-10 text-xs md:text-sm tracking-[0.3em] font-medium text-white group-hover:text-slate-900 transition-colors duration-500">
+                  继续探索
+                </span>
+                <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+              </button>
+            </div>
           </div>
 
           {/* Hidden reset logic (double click background to return start) */}
@@ -490,8 +509,163 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Shared Corner Details - Only show if not on the final Page 5 */}
-      {page !== 5 && (
+      {/* Page 6 Content - Hand-drawn progress transition */}
+      {page === 6 && (
+        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 animate-in fade-in duration-[1500ms] fill-mode-both">
+          <div className="max-w-4xl text-center mb-16 font-light text-white/90" style={{ fontWeight: 300, letterSpacing: '2px', lineHeight: '1.8' }}>
+            <p className="text-base md:text-xl">
+              于是，以每周一百到一百五十本的速度，弗洛斯特用了几个世纪，<br className="hidden md:block" />
+              穷尽了他所能寻找到的全部藏书……
+            </p>
+          </div>
+          
+          {/* Hand-drawn style progress bar */}
+          <div className="w-64 md:w-96 h-8 relative">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 400 20">
+              <style>{`
+                .hand-drawn-path {
+                  stroke-dasharray: 405;
+                  stroke-dashoffset: 405;
+                  animation: draw-line 5s linear forwards;
+                }
+                @keyframes draw-line {
+                  to { stroke-dashoffset: 0; }
+                }
+              `}</style>
+              {/* Background rough track */}
+              <path 
+                d="M 2 10 Q 50 12, 100 10 T 200 8 T 300 11 T 398 10" 
+                fill="none" 
+                stroke="rgba(255,255,255,0.08)" 
+                strokeWidth="3" 
+                strokeLinecap="round" 
+              />
+              {/* Animated foreground path */}
+              <path 
+                className="hand-drawn-path"
+                d="M 2 10 Q 50 12, 100 10 T 200 8 T 300 11 T 398 10" 
+                fill="none" 
+                stroke="rgba(255,255,255,0.85)" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.3))' }}
+              />
+            </svg>
+          </div>
+          
+          <div 
+            className="absolute inset-0 z-0 cursor-default" 
+            onDoubleClick={() => setPage(1)}
+          />
+        </div>
+      )}
+
+      {/* Page 7 Content - Sequential Text Flow & Significantly Lifted Wave Effect */}
+      {page === 7 && (
+        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 animate-in fade-in duration-[2000ms] fill-mode-both overflow-hidden">
+          <style>{`
+            .staggered-text {
+              opacity: 0;
+              animation: staggered-fade-in 1s ease-out forwards;
+            }
+            @keyframes staggered-fade-in {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+
+            .waves-container {
+              position: relative;
+              width: 100vw;
+              min-height: 120px;
+              overflow: visible;
+              pointer-events: none;
+              z-index: 5;
+            }
+
+            .wave-svg {
+              display: block;
+              width: 100%;
+              height: 100px;
+              mix-blend-mode: screen;
+            }
+
+            .parallax-waves > use {
+              animation: move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
+            }
+            .parallax-waves > use:nth-child(1) {
+              animation-delay: -2s;
+              animation-duration: 7s;
+            }
+            .parallax-waves > use:nth-child(2) {
+              animation-delay: -3s;
+              animation-duration: 10s;
+            }
+            .parallax-waves > use:nth-child(3) {
+              animation-delay: -4s;
+              animation-duration: 13s;
+            }
+
+            @keyframes move-forever {
+              0% { transform: translate3d(-90px, 0, 0); }
+              100% { transform: translate3d(85px, 0, 0); }
+            }
+          `}</style>
+          
+          <div className="w-full flex flex-col items-center pt-20">
+            {/* Central content container */}
+            <div className="max-w-4xl text-center font-light text-white/90 space-y-6 relative z-20" style={{ fontWeight: 300, letterSpacing: '2px', lineHeight: '1.8' }}>
+              {/* Paragraph 1: Immediate */}
+              <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '0s' }}>
+                弗洛斯特想要成为人
+              </p>
+              
+              {/* Paragraph 2: Delay 3s */}
+              <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '3s' }}>
+                他仿制了人的感觉器官，使他能像人一样看到、嗅到、尝到、听到
+              </p>
+              
+              {/* Paragraph 3: Delay 6s */}
+              <p className="text-base md:text-xl staggered-text" style={{ animationDelay: '6s' }}>
+                他开始创造艺术，他想拥有人类的体验
+              </p>
+            </div>
+            
+            {/* Immersive Wave Effect lifted significantly - mt-[160px] is roughly double the previous 80px gap */}
+            <div className="waves-container mt-[160px]">
+              <svg className="wave-svg" viewBox="0 24 150 28" preserveAspectRatio="none" shapeRendering="auto">
+                <defs>
+                  <path id="gentle-wave-path" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+                </defs>
+                <g className="parallax-waves">
+                  {/* Wave 1: Background Layer */}
+                  <use href="#gentle-wave-path" x="48" y="0" fill="rgba(30, 58, 138, 0.3)" />
+                  {/* Wave 2: Middle Layer */}
+                  <use href="#gentle-wave-path" x="48" y="3" fill="rgba(30, 58, 138, 0.5)" />
+                  {/* Wave 3: Top Layer */}
+                  <use href="#gentle-wave-path" x="48" y="5" fill="rgba(30, 58, 138, 0.8)" />
+                </g>
+              </svg>
+              {/* Deep water block extending to infinity to avoid gaps after lifting the waves */}
+              <div style={{ backgroundColor: 'rgba(30, 58, 138, 0.8)', height: '100vh', marginTop: '-2px' }}></div>
+            </div>
+          </div>
+
+          {/* Invisible interactive reset */}
+          <div 
+            className="absolute inset-0 z-0 cursor-default" 
+            onDoubleClick={() => {
+              setPage(1);
+              setHiddenPhrases(new Set());
+              setIsCompleted(false);
+              setProgress(0);
+              setVisibleArtifactCount(2);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Shared Corner Details - Only show if not on the final Pages (5, 6, 7) */}
+      {page !== 5 && page !== 6 && page !== 7 && (
         <>
           <div className="absolute bottom-[15%] right-[10%] w-1 h-1 bg-white rounded-full blur-[1px] opacity-40 animate-pulse"></div>
           <div className="absolute bottom-[20%] right-[15%] w-[1px] h-[1px] bg-white rounded-full opacity-20"></div>
